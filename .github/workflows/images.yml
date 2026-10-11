@@ -1,0 +1,38 @@
+name: Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - make_images.py
+      - .github/workflows/images.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  images:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+
+      - name: Get the PEL study's hash
+        id: pel
+        run: |
+          sha256=$(sed -nE 's/^PEL_SHA256 = "([0-9a-f]+)"$/\1/p' make_images.py)
+          test -n "$sha256"
+          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+
+      # The PEL study is about 105 MB, and mta.info may block GitHub's runners,
+      # so only download it when the cache doesn't have this version of it.
+      - uses: actions/cache@v4
+        with:
+          path: cache
+          key: pel-${{ steps.pel.outputs.sha256 }}
+
+      - name: Make and upload the images
+        run: ./make_images.py --upload
+        env:
+          GH_TOKEN: ${{ github.token }}

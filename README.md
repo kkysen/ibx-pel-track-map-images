@@ -59,9 +59,16 @@ It:
 
 ## Uploading the images
 
+On every push to `main` that changes `make_images.py` (or its workflow),
+the [`Images` workflow](.github/workflows/images.yml) runs
+
 ```sh
 ./make_images.py --upload
 ```
+
+It caches `cache/` keyed by the PEL study's hash,
+so it only downloads the PDF once.
+It can also be run by hand, from the Actions tab or locally.
 
 The images above aren't in git,
 so that regenerating them doesn't grow the repo's history.
@@ -71,7 +78,7 @@ and then replaces each image in with `gh release upload --clobber`.
 Their URLs stay the same, so this README needn't change.
 Old versions of the images aren't kept.
 
-This needs [`gh`](https://cli.github.com/), logged in with write access to the repo,
+Locally, this needs [`gh`](https://cli.github.com/), logged in with write access to the repo,
 and the release needs at least one commit pushed to tag.
 
 ## Crop boxes
