@@ -81,7 +81,7 @@ SHEETS = [
         page=993,
         # The same 2 Av option, drawn rotated, with the reverse curve,
         # from the end of track to the junction with the main line.
-        map=Box(left=MAP_FRAME.left, top=MAP_FRAME.top, right=1530, bottom=MAP_FRAME.bottom),
+        map=Box(left=164, top=MAP_FRAME.top, right=1530, bottom=MAP_FRAME.bottom),
         table=Box(left=1873, top=747, right=2341, bottom=846),
         corner="left",
     ),
