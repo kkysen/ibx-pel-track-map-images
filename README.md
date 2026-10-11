@@ -14,7 +14,7 @@ and moves the sheet's curve table into a bottom corner of it.
 | Image | PDF page | Table goes in |
 | --- | --- | --- |
 | BAT Curve: `IBX1 LRT-18`, the 2 Av option into the Brooklyn Army Terminal | 992 | bottom right |
-| BAT Curves: `IBX1 LRT-12` and `LRT-18`, the same 2 Av option, drawn rotated, with its reverse curve out to the end of track | 993 | bottom left |
+| BAT Curves: `IBX1 LRT-12` and `LRT-18`, the same 2 Av option, drawn rotated, with its reverse curve out to the end of track | 993 | inside the red box |
 | Street Running Curves: `LRT-641` through `LRT-664`, around Metropolitan Av and 69 St | 1014 | bottom left |
 
 The images are meant to sit side by side on a web page,

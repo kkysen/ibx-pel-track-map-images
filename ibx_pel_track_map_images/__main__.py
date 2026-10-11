@@ -67,6 +67,9 @@ class Sheet:
     table: Box
     # Which bottom corner of the map the table goes in.
     corner: str
+    # Instead of a corner, where the table's top left goes,
+    # in points from the map's top left.
+    table_at: tuple[float, float] | None = None
 
     @property
     def file_stem(self) -> str:
@@ -88,9 +91,12 @@ SHEETS = [
         page=993,
         # The same 2 Av option, drawn rotated, with the reverse curve,
         # from the end of track to the junction with the main line.
-        map=Box(left=220, top=MAP_FRAME.top, right=1530, bottom=MAP_FRAME.bottom),
+        # Down to the lower "Brooklyn Army Terminal" label.
+        map=Box(left=220, top=MAP_FRAME.top, right=1530, bottom=632),
         table=Box(left=1873, top=747, right=2341, bottom=846),
         corner="left",
+        # Inside the red box, between the BP and TS station labels.
+        table_at=(26, 349),
     ),
     Sheet(
         name="IBX PEL Study - Street Running Curves - p1014",
@@ -139,8 +145,11 @@ def make_image(pdf: PdfDocument, sheet: Sheet) -> Path:
     page = render_page(pdf, sheet.page)
     map_image = page.crop(sheet.map.pixels())
     table = page.crop(sheet.table.pixels())
-    y = map_image.height - table.height
-    x = 0 if sheet.corner == "left" else map_image.width - table.width
+    if sheet.table_at is not None:
+        x, y = (round(v * DPI / 72) for v in sheet.table_at)
+    else:
+        y = map_image.height - table.height
+        x = 0 if sheet.corner == "left" else map_image.width - table.width
     map_image.paste(table, (x, y))
     OUT.mkdir(exist_ok=True)
     path = OUT / f"{sheet.file_stem}.png"
