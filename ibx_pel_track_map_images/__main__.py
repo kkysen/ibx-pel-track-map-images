@@ -3,8 +3,11 @@
 Each image is a crop of a track plan sheet's map,
 with that sheet's curve table moved into a corner of the map,
 so the table doesn't need the rest of the sheet below the map to come along.
+Each sheet also gets a tracks-only image of the same map,
+with just the aerial photo and the blue track lines.
 """
 
+import ctypes
 import hashlib
 import subprocess
 import sys
@@ -14,7 +17,8 @@ from pathlib import Path
 
 from curl_cffi import requests
 from PIL.Image import Image
-from pypdfium2 import PdfDocument
+import pypdfium2.raw as pdfium_c
+from pypdfium2 import PdfDocument, PdfObject, PdfPage
 
 ROOT = Path(__file__).parent.parent
 CACHE = ROOT / "cache"
@@ -54,6 +58,10 @@ class Box:
         )
 
 
+# The stroke colors of the track lines:
+# the IBX light rail tracks, and the freight tracks.
+TRACK_COLORS = {(0, 127, 255), (0, 46, 184)}
+
 # Every track plan sheet has its aerial photo in the same frame.
 MAP_FRAME = Box(left=108, top=141, right=2340, bottom=750)
 
@@ -75,6 +83,10 @@ class Sheet:
     def file_stem(self) -> str:
         """The name, without spaces, which GitHub turns into dots in release asset names."""
         return "-".join(self.name.lower().replace(" - ", " ").split())
+
+    @property
+    def tracks_only_file_stem(self) -> str:
+        return f"{self.file_stem}-tracks-only"
 
 
 SHEETS = [
@@ -137,12 +149,44 @@ def download_pel() -> Path:
     return PEL_PDF
 
 
-def render_page(pdf: PdfDocument, page: int) -> Image:
-    return pdf[page - 1].render(scale=DPI / 72).to_pil().convert("RGB")
+def render_page(page: PdfPage) -> Image:
+    return page.render(scale=DPI / 72).to_pil().convert("RGB")
 
 
-def make_image(pdf: PdfDocument, sheet: Sheet) -> Path:
-    page = render_page(pdf, sheet.page)
+def stroke_color(obj: PdfObject) -> tuple[int, int, int]:
+    r, g, b, a = (ctypes.c_uint() for _ in range(4))
+    pdfium_c.FPDFPageObj_GetStrokeColor(
+        obj, ctypes.byref(r), ctypes.byref(g), ctypes.byref(b), ctypes.byref(a)
+    )
+    return (r.value, g.value, b.value)
+
+
+def strip_to_tracks(page: PdfPage) -> None:
+    """Remove everything but the aerial photos and the track lines.
+
+    The aerial photos are images, and everything drawn over them is vector paths and text,
+    so the track lines are just the paths stroked in `TRACK_COLORS`.
+    """
+    for obj in list(page.get_objects()):
+        if obj.type == pdfium_c.FPDF_PAGEOBJ_IMAGE:
+            continue
+        if obj.type == pdfium_c.FPDF_PAGEOBJ_PATH and stroke_color(obj) in TRACK_COLORS:
+            continue
+        page.remove_obj(obj)
+    page.gen_content()
+
+
+def save(image: Image, file_stem: str) -> Path:
+    OUT.mkdir(exist_ok=True)
+    path = OUT / f"{file_stem}.png"
+    image.save(path, optimize=True)
+    return path
+
+
+def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
+    """Make the image with the curve table, and then the tracks-only one."""
+    pdf_page = pdf[sheet.page - 1]
+    page = render_page(pdf_page)
     map_image = page.crop(sheet.map.pixels())
     table = page.crop(sheet.table.pixels())
     if sheet.table_at is not None:
@@ -151,10 +195,12 @@ def make_image(pdf: PdfDocument, sheet: Sheet) -> Path:
         y = map_image.height - table.height
         x = 0 if sheet.corner == "left" else map_image.width - table.width
     map_image.paste(table, (x, y))
-    OUT.mkdir(exist_ok=True)
-    path = OUT / f"{sheet.file_stem}.png"
-    map_image.save(path, optimize=True)
-    return path
+    path = save(map_image, sheet.file_stem)
+    # This modifies the page in `pdf`, so it goes after rendering it as is.
+    strip_to_tracks(pdf_page)
+    tracks_only = render_page(pdf_page).crop(sheet.map.pixels())
+    tracks_only_path = save(tracks_only, sheet.tracks_only_file_stem)
+    return [path, tracks_only_path]
 
 
 def upload(paths: list[Path]) -> None:
@@ -204,7 +250,7 @@ def main() -> None:
         print(PEL_SHA256)
         return
     pdf = PdfDocument(download_pel())
-    paths = [make_image(pdf, sheet) for sheet in SHEETS]
+    paths = [path for sheet in SHEETS for path in make_images(pdf, sheet)]
     for path in paths:
         print(path)
     if args.upload:

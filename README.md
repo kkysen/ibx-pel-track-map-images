@@ -25,19 +25,30 @@ it keeps only the LRT rows and the `CURVE #`, `RADIUS (FT)`, and `V (MPH)` colum
 the LRT rows are blank in the other columns,
 and the `BAY-631` and `BAY-643` rows are freight curves.
 
+Each also has a tracks-only image of the same map,
+with just the aerial photo and the track lines:
+the IBX tracks in light blue and the freight tracks in dark blue,
+without any labels, linework, or the curve table.
+
 ## Images
 
 ### BAT curve (page 992)
 
 ![BAT curve, page 992](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-bat-curve-ibx1-lrt-18-p992.png)
 
+![BAT curve, page 992, tracks only](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-bat-curve-ibx1-lrt-18-p992-tracks-only.png)
+
 ### BAT curves, with the reverse curve (page 993)
 
 ![BAT curves with the reverse curve, page 993](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-bat-curves-ibx1-lrt-12-and-lrt-18-p993.png)
 
+![BAT curves with the reverse curve, page 993, tracks only](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-bat-curves-ibx1-lrt-12-and-lrt-18-p993-tracks-only.png)
+
 ### Street-running curves (page 1014)
 
 ![Street-running curves, page 1014](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-street-running-curves-p1014.png)
+
+![Street-running curves, page 1014, tracks only](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-street-running-curves-p1014-tracks-only.png)
 
 ## Usage
 
@@ -59,6 +70,10 @@ It:
 2. Renders each page at 200 DPI with `pypdfium2`.
 3. Crops the map and the table, pastes the table into the map's corner,
    and writes a PNG to `out/`.
+4. Removes everything from the page but the aerial photos and the blue track lines,
+   renders it again, and writes the same crop as a `-tracks-only` PNG.
+   The aerial photos are images and everything over them is vector paths and text,
+   so the track lines are the paths stroked in `TRACK_COLORS`.
 
 `cache/` and `out/` aren't committed.
 
