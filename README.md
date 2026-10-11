@@ -17,8 +17,7 @@ and moves the sheet's curve table into a bottom corner of it.
 | BAT Curves: `IBX1 LRT-12` and `LRT-18`, the same 2 Av option, drawn rotated, with its reverse curve out to the end of track | 993 | inside the red box |
 | Street Running Curves: `LRT-641` through `LRT-664`, around Metropolitan Av and 69 St | 1014 | bottom left |
 
-The images are meant to sit side by side on a web page,
-so each is cropped as narrow as its curves allow:
+Each is cropped to its curves:
 the BAT one ends just right of the `IBX2 LRT-19` label, so the table doesn't cover it,
 and the street-running one starts at the Metropolitan Av IBX platforms.
 To fit the street-running table there without covering the track,
