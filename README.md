@@ -59,13 +59,15 @@ It:
 
 ## Uploading the images
 
-On every push to `main` that changes the code (or its workflow),
-the [`Images` workflow](.github/workflows/images.yml) runs
+On every push to `main`,
+the [CI workflow](.github/workflows/ci.yml) runs
 
 ```sh
 uv run ibx-pel-track-map-images --upload
 ```
 
+On PRs, it makes the images without uploading them,
+and attaches them to the run as an `images` artifact to preview.
 It caches `cache/` keyed by the PEL study's hash,
 so it only downloads the PDF once.
 It can also be run by hand, from the Actions tab or locally.

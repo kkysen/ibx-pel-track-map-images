@@ -1,13 +1,9 @@
-name: Images
+name: CI
 
 on:
   push:
     branches: [main]
-    paths:
-      - ibx_pel_track_map_images/**
-      - pyproject.toml
-      - uv.lock
-      - .github/workflows/images.yml
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -20,10 +16,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
 
+      - name: Install
+        run: |
+          uv sync --locked
+          echo "$PWD/.venv/bin" >> "$GITHUB_PATH"
+
       - name: Get the PEL study's hash
         id: pel
         run: |
-          sha256=$(uv run --locked ibx-pel-track-map-images --print-pel-sha256)
+          sha256=$(ibx-pel-track-map-images --print-pel-sha256)
           echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
 
       # The PEL study is about 105 MB, and mta.info may block GitHub's runners,
@@ -33,7 +34,14 @@ jobs:
           path: cache
           key: pel-${{ steps.pel.outputs.sha256 }}
 
-      - name: Make and upload the images
-        run: uv run --locked ibx-pel-track-map-images --upload
+      # Only `main`'s images replace the release's.
+      - name: Make the images
+        run: ibx-pel-track-map-images ${{ github.ref == 'refs/heads/main' && '--upload' || '' }}
         env:
           GH_TOKEN: ${{ github.token }}
+
+      # So a PR's images can be previewed too.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: images
+          path: out/
