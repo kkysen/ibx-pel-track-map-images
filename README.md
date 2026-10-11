@@ -28,6 +28,8 @@ and the `BAY-631` and `BAY-643` rows are freight curves.
 Each also has a tracks-only image of the same map,
 with just the aerial photo and the IBX tracks in blue,
 without the freight tracks, any labels or linework, or the curve table.
+The BAT ones also leave out the main line's `LRT-19` curves,
+so only the tracks curving to 2 Av are left.
 
 ## Images
 
@@ -73,6 +75,8 @@ It:
    renders it again, and writes the same crop as a `-tracks-only` PNG.
    The aerial photos are images and everything over them is vector paths and text,
    so the track lines are the paths stroked in `IBX_TRACK_COLOR`.
+   Each track is a run of consecutive dash paths,
+   so a sheet's `other_tracks` leaves out tracks by their page object indices.
 
 `cache/` and `out/` aren't committed.
 

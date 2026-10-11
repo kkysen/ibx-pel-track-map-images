@@ -78,6 +78,10 @@ class Sheet:
     # Instead of a corner, where the table's top left goes,
     # in points from the map's top left.
     table_at: tuple[float, float] | None = None
+    # Indices of page objects to leave out of the tracks-only image,
+    # for tracks other than the ones the image is of.
+    # Each track line is drawn as a run of consecutive dash paths.
+    other_tracks: tuple[range, ...] = ()
 
     @property
     def file_stem(self) -> str:
@@ -97,6 +101,8 @@ SHEETS = [
         map=Box(left=1216, top=MAP_FRAME.top, right=2115, bottom=MAP_FRAME.bottom),
         table=Box(left=1873, top=689, right=2341, bottom=826),
         corner="right",
+        # The main line's IBX1 and IBX2 LRT-19 curves, from the west.
+        other_tracks=(range(1418, 1511), range(1524, 1617)),
     ),
     Sheet(
         name="IBX PEL Study - BAT Curves - IBX1 LRT-12 and LRT-18 - p993",
@@ -109,6 +115,8 @@ SHEETS = [
         corner="left",
         # Inside the red box, between the BP and TS station labels.
         table_at=(26, 349),
+        # The main line's IBX1 and IBX2 LRT-19 curves, from the south.
+        other_tracks=(range(2039, 2073), range(2079, 2113)),
     ),
     Sheet(
         name="IBX PEL Study - Street Running Curves - p1014",
@@ -161,16 +169,21 @@ def stroke_color(obj: PdfObject) -> tuple[int, int, int]:
     return (r.value, g.value, b.value)
 
 
-def strip_to_tracks(page: PdfPage) -> None:
+def strip_to_tracks(page: PdfPage, other_tracks: tuple[range, ...]) -> None:
     """Remove everything but the aerial photos and the IBX track lines.
 
     The aerial photos are images, and everything drawn over them is vector paths and text,
-    so the IBX track lines are just the paths stroked in `IBX_TRACK_COLOR`.
+    so the IBX track lines are just the paths stroked in `IBX_TRACK_COLOR`,
+    except for the `other_tracks`.
     """
-    for obj in list(page.get_objects()):
+    for i, obj in enumerate(list(page.get_objects())):
         if obj.type == pdfium_c.FPDF_PAGEOBJ_IMAGE:
             continue
-        if obj.type == pdfium_c.FPDF_PAGEOBJ_PATH and stroke_color(obj) == IBX_TRACK_COLOR:
+        if (
+            obj.type == pdfium_c.FPDF_PAGEOBJ_PATH
+            and stroke_color(obj) == IBX_TRACK_COLOR
+            and not any(i in track for track in other_tracks)
+        ):
             continue
         page.remove_obj(obj)
     page.gen_content()
@@ -197,7 +210,7 @@ def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
     map_image.paste(table, (x, y))
     path = save(map_image, sheet.file_stem)
     # This modifies the page in `pdf`, so it goes after rendering it as is.
-    strip_to_tracks(pdf_page)
+    strip_to_tracks(pdf_page, sheet.other_tracks)
     tracks_only = render_page(pdf_page).crop(sheet.map.pixels())
     tracks_only_path = save(tracks_only, sheet.tracks_only_file_stem)
     return [path, tracks_only_path]
