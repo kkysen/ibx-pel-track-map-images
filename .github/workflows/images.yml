@@ -21,8 +21,7 @@ jobs:
       - name: Get the PEL study's hash
         id: pel
         run: |
-          sha256=$(sed -nE 's/^PEL_SHA256 = "([0-9a-f]+)"$/\1/p' make_images.py)
-          test -n "$sha256"
+          sha256=$(./make_images.py --print-pel-sha256)
           echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
 
       # The PEL study is about 105 MB, and mta.info may block GitHub's runners,

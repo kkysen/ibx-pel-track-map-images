@@ -189,7 +189,15 @@ def main() -> None:
         action="store_true",
         help=f"upload the images to the `{RELEASE_TAG}` GitHub release",
     )
+    parser.add_argument(
+        "--print-pel-sha256",
+        action="store_true",
+        help="only print the PEL study's expected SHA-256, such as for a cache key",
+    )
     args = parser.parse_args()
+    if args.print_pel_sha256:
+        print(PEL_SHA256)
+        return
     pdf = PdfDocument(download_pel())
     paths = [make_image(pdf, sheet) for sheet in SHEETS]
     for path in paths:
