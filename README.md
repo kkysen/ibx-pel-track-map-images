@@ -28,11 +28,11 @@ and the `BAY-631` and `BAY-643` rows are freight curves.
 
 ## Images
 
-![BAT curve, page 992](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/IBX%20PEL%20Study%20-%20BAT%20Curve%20-%20IBX1%20LRT-18%20-%20p992.png)
+![BAT curve, page 992](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-bat-curve-ibx1-lrt-18-p992.png)
 
-![BAT curves with the reverse curve, page 993](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/IBX%20PEL%20Study%20-%20BAT%20Curves%20-%20IBX1%20LRT-12%20and%20LRT-18%20-%20p993.png)
+![BAT curves with the reverse curve, page 993](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-bat-curves-ibx1-lrt-12-and-lrt-18-p993.png)
 
-![Street-running curves, page 1014](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/IBX%20PEL%20Study%20-%20Street%20Running%20Curves%20-%20p1014.png)
+![Street-running curves, page 1014](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/ibx-pel-study-street-running-curves-p1014.png)
 
 ## Usage
 

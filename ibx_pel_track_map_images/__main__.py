@@ -68,6 +68,11 @@ class Sheet:
     # Which bottom corner of the map the table goes in.
     corner: str
 
+    @property
+    def file_stem(self) -> str:
+        """The name, without spaces, which GitHub turns into dots in release asset names."""
+        return "-".join(self.name.lower().replace(" - ", " ").split())
+
 
 SHEETS = [
     Sheet(
@@ -138,7 +143,7 @@ def make_image(pdf: PdfDocument, sheet: Sheet) -> Path:
     x = 0 if sheet.corner == "left" else map_image.width - table.width
     map_image.paste(table, (x, y))
     OUT.mkdir(exist_ok=True)
-    path = OUT / f"{sheet.name}.png"
+    path = OUT / f"{sheet.file_stem}.png"
     map_image.save(path, optimize=True)
     return path
 
