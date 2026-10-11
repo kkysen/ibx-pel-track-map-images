@@ -44,9 +44,13 @@ This needs only [`uv`](https://docs.astral.sh/uv/),
 which installs the script's dependencies from its inline metadata.
 It:
 
-1. Downloads the PEL study into `cache/`, once.
-   `mta.info` returns 403 to clients that don't look like a browser,
+1. Downloads the PEL study into `cache/`, once,
+   and checks its SHA-256.
+   It tries `mta.info` first,
+   which returns 403 to clients that don't look like a browser,
    so this uses `curl_cffi` to impersonate Chrome.
+   If that fails or the hash differs, as if the MTA moved or changed the PDF,
+   it falls back to the Wayback Machine's copy, which is identical but much slower.
 2. Renders each page at 200 DPI with `pypdfium2`.
 3. Crops the map and the table, pastes the table into the map's corner,
    and writes a PNG to `out/`.

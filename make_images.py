@@ -15,7 +15,9 @@ so the table doesn't need the rest of the sheet below the map to come along.
 """
 
 import argparse
+import hashlib
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -29,6 +31,10 @@ OUT = ROOT / "out"
 
 # The PEL study with its appendices, as posted on the MTA's IBX page.
 PEL_URL = "https://www.mta.info/document/114891"
+# The Wayback Machine's copy, in case the MTA moves or changes it.
+# It's much slower, so it's only the backup.
+PEL_ARCHIVE_URL = f"https://web.archive.org/web/20260518002024id_/{PEL_URL}"
+PEL_SHA256 = "6d0ae17e061fa15185d038c62aae99f8d71c315063ad200d8160c6bfc1cf3230"
 PEL_PDF = CACHE / "IBX PEL Final April 2023 v.5.pdf"
 
 # The GitHub release whose assets are the images, so they stay out of git.
@@ -107,11 +113,24 @@ def download_pel() -> Path:
     if PEL_PDF.exists():
         return PEL_PDF
     CACHE.mkdir(exist_ok=True)
-    # mta.info returns 403 to clients that don't look like a browser.
-    response = requests.get(PEL_URL, impersonate="chrome", timeout=600)
-    response.raise_for_status()
+    content = None
+    for url in [PEL_URL, PEL_ARCHIVE_URL]:
+        try:
+            # mta.info returns 403 to clients that don't look like a browser.
+            response = requests.get(url, impersonate="chrome", timeout=1800)
+            response.raise_for_status()
+        except requests.RequestsError as e:
+            print(f"couldn't download {url}: {e}", file=sys.stderr)
+            continue
+        sha256 = hashlib.sha256(response.content).hexdigest()
+        if sha256 == PEL_SHA256:
+            content = response.content
+            break
+        print(f"{url} has SHA-256 {sha256}, not {PEL_SHA256}", file=sys.stderr)
+    if content is None:
+        raise RuntimeError("couldn't download the PEL study")
     partial = PEL_PDF.with_suffix(".pdf.part")
-    partial.write_bytes(response.content)
+    partial.write_bytes(content)
     partial.rename(PEL_PDF)
     return PEL_PDF
 
