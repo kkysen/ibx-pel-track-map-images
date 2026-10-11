@@ -23,7 +23,7 @@ jobs:
       - name: Get the PEL study's hash
         id: pel
         run: |
-          sha256=$(uv run --locked make-images --print-pel-sha256)
+          sha256=$(uv run --locked ibx-pel-track-map-images --print-pel-sha256)
           echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
 
       # The PEL study is about 105 MB, and mta.info may block GitHub's runners,
@@ -34,6 +34,6 @@ jobs:
           key: pel-${{ steps.pel.outputs.sha256 }}
 
       - name: Make and upload the images
-        run: uv run --locked make-images --upload
+        run: uv run --locked ibx-pel-track-map-images --upload
         env:
           GH_TOKEN: ${{ github.token }}

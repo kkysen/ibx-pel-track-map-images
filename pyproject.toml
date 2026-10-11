@@ -11,7 +11,7 @@ dependencies = [
 ]
 
 [project.scripts]
-make-images = "ibx_pel_track_map_images.__main__:main"
+ibx-pel-track-map-images = "ibx_pel_track_map_images.__main__:main"
 
 [build-system]
 requires = ["uv_build>=0.13.0,<0.14"]

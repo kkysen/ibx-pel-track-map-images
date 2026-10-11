@@ -8,7 +8,7 @@ cropped from the track plan sheets in the MTA's IBX
 On each sheet, the curve table (radius, speed, etc.)
 sits below the track map, past the profile.
 So a screenshot that includes both is mostly wasted space.
-`make-images` instead crops the track map
+`ibx-pel-track-map-images` instead crops the track map
 and moves the sheet's curve table into a bottom corner of it.
 
 | Image | PDF page | Table goes in |
@@ -37,7 +37,7 @@ and the `BAY-631` and `BAY-643` rows are freight curves.
 ## Usage
 
 ```sh
-uv run make-images
+uv run ibx-pel-track-map-images
 ```
 
 This needs only [`uv`](https://docs.astral.sh/uv/),
@@ -63,7 +63,7 @@ On every push to `main` that changes the code (or its workflow),
 the [`Images` workflow](.github/workflows/images.yml) runs
 
 ```sh
-uv run make-images --upload
+uv run ibx-pel-track-map-images --upload
 ```
 
 It caches `cache/` keyed by the PEL study's hash,
