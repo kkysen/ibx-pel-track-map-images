@@ -3,7 +3,7 @@ name = "ibx-pel-track-map-images"
 version = "0.1.0"
 description = "Track map images of IBX curves, cropped from the IBX PEL study, with their curve tables"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.15"
 dependencies = [
     "curl-cffi",
     "pillow",
@@ -14,7 +14,7 @@ dependencies = [
 make-images = "ibx_pel_track_map_images.__main__:main"
 
 [build-system]
-requires = ["uv_build>=0.12.13,<0.13"]
+requires = ["uv_build>=0.13.0,<0.14"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
