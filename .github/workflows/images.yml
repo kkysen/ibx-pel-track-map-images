@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
     paths:
-      - make_images.py
+      - ibx_pel_track_map_images/**
+      - pyproject.toml
+      - uv.lock
       - .github/workflows/images.yml
   workflow_dispatch:
 
@@ -21,7 +23,7 @@ jobs:
       - name: Get the PEL study's hash
         id: pel
         run: |
-          sha256=$(./make_images.py --print-pel-sha256)
+          sha256=$(uv run --locked make-images --print-pel-sha256)
           echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
 
       # The PEL study is about 105 MB, and mta.info may block GitHub's runners,
@@ -32,6 +34,6 @@ jobs:
           key: pel-${{ steps.pel.outputs.sha256 }}
 
       - name: Make and upload the images
-        run: ./make_images.py --upload
+        run: uv run --locked make-images --upload
         env:
           GH_TOKEN: ${{ github.token }}
