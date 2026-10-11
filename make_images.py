@@ -77,6 +77,15 @@ SHEETS = [
         corner="right",
     ),
     Sheet(
+        name="IBX PEL Study - BAT Curves - IBX1 LRT-12 and LRT-18 - p993",
+        page=993,
+        # The same 2 Av option, drawn rotated, with the reverse curve,
+        # from the end of track to the junction with the main line.
+        map=Box(left=MAP_FRAME.left, top=MAP_FRAME.top, right=1530, bottom=MAP_FRAME.bottom),
+        table=Box(left=1873, top=747, right=2341, bottom=846),
+        corner="left",
+    ),
+    Sheet(
         name="IBX PEL Study - Street Running Curves - p1014",
         page=1014,
         map=Box(left=625, top=MAP_FRAME.top, right=MAP_FRAME.right, bottom=MAP_FRAME.bottom),
