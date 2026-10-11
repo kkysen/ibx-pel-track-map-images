@@ -88,7 +88,9 @@ SHEETS = [
     Sheet(
         name="IBX PEL Study - Street Running Curves - p1014",
         page=1014,
-        map=Box(left=625, top=MAP_FRAME.top, right=MAP_FRAME.right, bottom=MAP_FRAME.bottom),
+        map=Box(
+            left=625, top=MAP_FRAME.top, right=MAP_FRAME.right, bottom=MAP_FRAME.bottom
+        ),
         table=Box(left=1847, top=748, right=2134, bottom=1001),
         corner="left",
     ),
