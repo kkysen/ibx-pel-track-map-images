@@ -26,6 +26,14 @@ it keeps only the LRT rows and the `CURVE #`, `RADIUS (FT)`, and `V (MPH)` colum
 the LRT rows are blank in the other columns,
 and the `BAY-631` and `BAY-643` rows are freight curves.
 
+## Images
+
+![BAT curve, page 992](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/IBX%20PEL%20Study%20-%20BAT%20Curve%20-%20IBX1%20LRT-18%20-%20p992.png)
+
+![BAT curves with the reverse curve, page 993](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/IBX%20PEL%20Study%20-%20BAT%20Curves%20-%20IBX1%20LRT-12%20and%20LRT-18%20-%20p993.png)
+
+![Street-running curves, page 1014](https://github.com/kkysen/ibx-pel-track-map-images/releases/download/images/IBX%20PEL%20Study%20-%20Street%20Running%20Curves%20-%20p1014.png)
+
 ## Usage
 
 ```sh
@@ -44,6 +52,23 @@ It:
    and writes a PNG to `out/`.
 
 `cache/` and `out/` aren't committed.
+
+## Uploading the images
+
+```sh
+./make_images.py --upload
+```
+
+The images above aren't in git,
+so that regenerating them doesn't grow the repo's history.
+They're assets of the [`images` release](https://github.com/kkysen/ibx-pel-track-map-images/releases/tag/images) instead,
+which `--upload` creates if needed
+and then replaces each image in with `gh release upload --clobber`.
+Their URLs stay the same, so this README needn't change.
+Old versions of the images aren't kept.
+
+This needs [`gh`](https://cli.github.com/), logged in with write access to the repo,
+and the release needs at least one commit pushed to tag.
 
 ## Crop boxes
 
