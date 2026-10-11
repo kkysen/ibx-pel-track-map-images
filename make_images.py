@@ -72,15 +72,15 @@ SHEETS = [
         name="IBX PEL Study - BAT Curve - IBX1 LRT-18 - p992",
         page=992,
         # Only the curve into the Brooklyn Army Terminal, not the yard west of it.
-        map=Box(left=1216, top=MAP_FRAME.top, right=MAP_FRAME.right, bottom=MAP_FRAME.bottom),
+        map=Box(left=1216, top=MAP_FRAME.top, right=2115, bottom=MAP_FRAME.bottom),
         table=Box(left=1873, top=689, right=2341, bottom=826),
         corner="right",
     ),
     Sheet(
         name="IBX PEL Study - Street Running Curves - p1014",
         page=1014,
-        map=Box(left=245, top=MAP_FRAME.top, right=MAP_FRAME.right, bottom=MAP_FRAME.bottom),
-        table=Box(left=1847, top=748, right=2341, bottom=1059),
+        map=Box(left=625, top=MAP_FRAME.top, right=MAP_FRAME.right, bottom=MAP_FRAME.bottom),
+        table=Box(left=1847, top=748, right=2134, bottom=1001),
         corner="left",
     ),
 ]
