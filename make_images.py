@@ -14,15 +14,15 @@ with that sheet's curve table moved into a corner of the map,
 so the table doesn't need the rest of the sheet below the map to come along.
 """
 
-import argparse
 import hashlib
 import subprocess
 import sys
+from argparse import ArgumentParser
 from dataclasses import dataclass
 from pathlib import Path
 
 from curl_cffi import requests
-from PIL import Image
+from PIL.Image import Image
 from pypdfium2 import PdfDocument
 
 ROOT = Path(__file__).parent
@@ -135,7 +135,7 @@ def download_pel() -> Path:
     return PEL_PDF
 
 
-def render_page(pdf: PdfDocument, page: int) -> Image.Image:
+def render_page(pdf: PdfDocument, page: int) -> Image:
     return pdf[page - 1].render(scale=DPI / 72).to_pil().convert("RGB")
 
 
@@ -183,7 +183,7 @@ def upload(paths: list[Path]) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ArgumentParser(description=__doc__)
     parser.add_argument(
         "--upload",
         action="store_true",
