@@ -26,9 +26,8 @@ the LRT rows are blank in the other columns,
 and the `BAY-631` and `BAY-643` rows are freight curves.
 
 Each also has a tracks-only image of the same map,
-with just the aerial photo and the track lines:
-the IBX tracks in light blue and the freight tracks in dark blue,
-without any labels, linework, or the curve table.
+with just the aerial photo and the IBX tracks in blue,
+without the freight tracks, any labels or linework, or the curve table.
 
 ## Images
 
@@ -70,10 +69,10 @@ It:
 2. Renders each page at 200 DPI with `pypdfium2`.
 3. Crops the map and the table, pastes the table into the map's corner,
    and writes a PNG to `out/`.
-4. Removes everything from the page but the aerial photos and the blue track lines,
+4. Removes everything from the page but the aerial photos and the IBX track lines,
    renders it again, and writes the same crop as a `-tracks-only` PNG.
    The aerial photos are images and everything over them is vector paths and text,
-   so the track lines are the paths stroked in `TRACK_COLORS`.
+   so the track lines are the paths stroked in `IBX_TRACK_COLOR`.
 
 `cache/` and `out/` aren't committed.
 

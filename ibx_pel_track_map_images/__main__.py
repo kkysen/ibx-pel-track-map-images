@@ -58,9 +58,9 @@ class Box:
         )
 
 
-# The stroke colors of the track lines:
-# the IBX light rail tracks, and the freight tracks.
-TRACK_COLORS = {(0, 127, 255), (0, 46, 184)}
+# The stroke color of the IBX light rail track lines.
+# The freight tracks, in (0, 46, 184), are left out.
+IBX_TRACK_COLOR = (0, 127, 255)
 
 # Every track plan sheet has its aerial photo in the same frame.
 MAP_FRAME = Box(left=108, top=141, right=2340, bottom=750)
@@ -162,15 +162,15 @@ def stroke_color(obj: PdfObject) -> tuple[int, int, int]:
 
 
 def strip_to_tracks(page: PdfPage) -> None:
-    """Remove everything but the aerial photos and the track lines.
+    """Remove everything but the aerial photos and the IBX track lines.
 
     The aerial photos are images, and everything drawn over them is vector paths and text,
-    so the track lines are just the paths stroked in `TRACK_COLORS`.
+    so the IBX track lines are just the paths stroked in `IBX_TRACK_COLOR`.
     """
     for obj in list(page.get_objects()):
         if obj.type == pdfium_c.FPDF_PAGEOBJ_IMAGE:
             continue
-        if obj.type == pdfium_c.FPDF_PAGEOBJ_PATH and stroke_color(obj) in TRACK_COLORS:
+        if obj.type == pdfium_c.FPDF_PAGEOBJ_PATH and stroke_color(obj) == IBX_TRACK_COLOR:
             continue
         page.remove_obj(obj)
     page.gen_content()
