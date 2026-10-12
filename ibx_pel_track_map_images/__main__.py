@@ -73,6 +73,13 @@ TUNNEL_COLOR = (255, 20, 147)
 # Between the two tunnel tracks' centerlines, the same as the IBX tracks' spacing.
 TUNNEL_TRACK_SPACING = 9.7
 TUNNEL_LINE_WIDTH = 3
+# The freight tracks are kept next to the tunnel, but in orange,
+# since their dark blue is hard to tell from the IBX tracks' blue.
+TUNNEL_FREIGHT_TRACK_COLOR = (255, 140, 0)
+# The tunnel's station platforms, like the PEL study's Metropolitan Av ones:
+# to either side of the tracks' centerline, and as thick.
+TUNNEL_PLATFORM_OFFSET = 12.1
+TUNNEL_PLATFORM_WIDTH = 4
 
 # Every track plan sheet has its aerial photo in the same frame.
 MAP_FRAME = Box(left=108, top=141, right=2340, bottom=750)
@@ -94,10 +101,15 @@ class Sheet:
     # for tracks other than the ones the image is of.
     # Each track line is drawn as a run of consecutive dash paths.
     other_tracks: tuple[range, ...] = ()
-    # A possible tunnel instead of the street running, as the cubic Bezier
-    # of the centerline between its two tracks, in points from the map's top left.
+    # For a possible tunnel instead of the street running,
+    # the centerline between the freight tracks it's parallel to,
+    # in points from the map's top left.
     # It also gets an image of the tracks with the freight tracks and the tunnel.
-    tunnel: tuple[tuple[float, float], ...] | None = None
+    freight_centerline: tuple[tuple[float, float], ...] | None = None
+    # How far the tunnel's centerline is to the left of the freight centerline.
+    tunnel_offset: float = 0
+    # Where the tunnel's station platforms start and end, left to right, in points.
+    tunnel_station: tuple[float, float] | None = None
 
     @property
     def file_stem(self) -> str:
@@ -149,7 +161,38 @@ SHEETS = [
         # Parallel to the freight tracks, without the tight street curves,
         # from where the IBX tracks leave the Metropolitan Av platforms
         # to the right edge of the map, where they're back by the freight tracks.
-        tunnel=((216, 110.7), (716, 108.2), (1215, 146.4), (1715, 158.4)),
+        freight_centerline=(
+            (0, 155.3),
+            (72, 154.3),
+            (144, 153.7),
+            (216, 152.8),
+            (288, 152.3),
+            (360, 151.7),
+            (432, 151.2),
+            (504, 151.2),
+            (576, 151.9),
+            (648, 153.7),
+            (720, 155.3),
+            (792, 157),
+            (864, 158.4),
+            (936, 160.2),
+            (1008, 161.8),
+            (1080, 163.4),
+            (1152, 165.2),
+            (1224, 166.9),
+            (1296, 168.5),
+            (1368, 170.1),
+            (1440, 171.7),
+            (1512, 173.5),
+            (1584, 175),
+            (1656, 176.8),
+            (1715, 178.2),
+        ),
+        # As far as the IBX tracks are from the freight tracks at the right edge.
+        tunnel_offset=19.8,
+        # The Metropolitan Av platforms, moved to the tunnel,
+        # since they're up away from the freight tracks to widen the street curve.
+        tunnel_station=(24.8, 256.3),
     ),
 ]
 
@@ -217,38 +260,76 @@ def strip_to_tracks(
     page.gen_content()
 
 
-def draw_tunnel(image: Image, curve: tuple[tuple[float, float], ...]) -> None:
-    """Draw the tunnel's two tracks, offset to either side of its centerline."""
+def recolor(
+    page: PdfPage, old: tuple[int, int, int], new: tuple[int, int, int]
+) -> None:
+    for obj in page.get_objects():
+        if obj.type == pdfium_c.FPDF_PAGEOBJ_PATH and stroke_color(obj) == old:
+            pdfium_c.FPDFPageObj_SetStrokeColor(obj, *new, 255)
+    page.gen_content()
+
+
+def offset_line(
+    points: list[tuple[float, float]], distance: float
+) -> list[tuple[float, float]]:
+    """The line `distance` to the left of `points`, in pixels."""
     scale = DPI / 72
-    (x0, y0), (x1, y1), (x2, y2), (x3, y3) = curve
-    steps = 400
-    centerline = []
-    for i in range(steps + 1):
-        t = i / steps
-        u = 1 - t
-        point = (
-            u**3 * x0 + 3 * u**2 * t * x1 + 3 * u * t**2 * x2 + t**3 * x3,
-            u**3 * y0 + 3 * u**2 * t * y1 + 3 * u * t**2 * y2 + t**3 * y3,
+    line = []
+    for i, (x, y) in enumerate(points):
+        # Offset along the normal, from the direction between the neighboring points.
+        (x0, y0) = points[max(i - 1, 0)]
+        (x1, y1) = points[min(i + 1, len(points) - 1)]
+        dx = x1 - x0
+        dy = y1 - y0
+        length = (dx**2 + dy**2) ** 0.5
+        line.append(
+            (
+                (x + dy / length * distance) * scale,
+                (y - dx / length * distance) * scale,
+            )
         )
-        # The tangent, to offset each track along the normal.
-        tangent = (
-            3 * u**2 * (x1 - x0) + 6 * u * t * (x2 - x1) + 3 * t**2 * (x3 - x2),
-            3 * u**2 * (y1 - y0) + 6 * u * t * (y2 - y1) + 3 * t**2 * (y3 - y2),
-        )
-        centerline.append((point, tangent))
+    return line
+
+
+def between(
+    points: tuple[tuple[float, float], ...], start: float, end: float
+) -> list[tuple[float, float]]:
+    """The part of `points` from `start` to `end`, interpolated every point."""
+    result = []
+    x = start
+    while x <= end:
+        i = next(i for i in range(1, len(points)) if points[i][0] >= x)
+        (x0, y0), (x1, y1) = points[i - 1], points[i]
+        result.append((x, y0 + (y1 - y0) * (x - x0) / (x1 - x0)))
+        x += 1
+    return result
+
+
+def draw_tunnel(image: Image, sheet: Sheet) -> None:
+    """Draw the tunnel's two tracks, parallel to the freight centerline, and its station."""
+    assert sheet.freight_centerline is not None
+    scale = DPI / 72
     draw = ImageDraw.Draw(image)
+    centerline = list(sheet.freight_centerline)
     for side in (-1, 1):
-        track = []
-        for (x, y), (dx, dy) in centerline:
-            length = (dx**2 + dy**2) ** 0.5
-            offset = side * TUNNEL_TRACK_SPACING / 2 / length
-            track.append(((x - dy * offset) * scale, (y + dx * offset) * scale))
         draw.line(
-            track,
+            offset_line(
+                centerline, sheet.tunnel_offset + side * TUNNEL_TRACK_SPACING / 2
+            ),
             fill=TUNNEL_COLOR,
             width=round(TUNNEL_LINE_WIDTH * scale),
             joint="curve",
         )
+    if sheet.tunnel_station is not None:
+        station = between(sheet.freight_centerline, *sheet.tunnel_station)
+        for side in (-1, 1):
+            draw.line(
+                offset_line(
+                    station, sheet.tunnel_offset + side * TUNNEL_PLATFORM_OFFSET
+                ),
+                fill=TUNNEL_COLOR,
+                width=round(TUNNEL_PLATFORM_WIDTH * scale),
+            )
 
 
 def save(image: Image, file_stem: str) -> Path:
@@ -259,7 +340,7 @@ def save(image: Image, file_stem: str) -> Path:
 
 
 def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
-    """Make the image with the curve table, any tunnel one, and then the tracks-only one."""
+    """Make the image with the curve table, the tracks-only one, and any tunnel one."""
     pdf_page = pdf[sheet.page - 1]
     page = render_page(pdf_page)
     map_image = ImageEnhance.Contrast(page.crop(sheet.map.pixels())).enhance(
@@ -275,20 +356,26 @@ def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
     path = save(map_image, sheet.file_stem)
     paths = [path]
     # These modify the page in `pdf`, so they go after rendering it as is.
-    if sheet.tunnel is not None:
+    if sheet.freight_centerline is not None:
         strip_to_tracks(
             pdf_page, sheet.other_tracks, (IBX_TRACK_COLOR, FREIGHT_TRACK_COLOR)
         )
+        recolor(pdf_page, FREIGHT_TRACK_COLOR, TUNNEL_FREIGHT_TRACK_COLOR)
         tunnel = ImageEnhance.Contrast(
             render_page(pdf_page).crop(sheet.map.pixels())
         ).enhance(AERIAL_CONTRAST)
-        draw_tunnel(tunnel, sheet.tunnel)
-        paths.append(save(tunnel, sheet.tunnel_file_stem))
-    strip_to_tracks(pdf_page, sheet.other_tracks)
+        draw_tunnel(tunnel, sheet)
+        tunnel_path = save(tunnel, sheet.tunnel_file_stem)
+        # The `other_tracks` are gone, and the indices of what's left have changed.
+        strip_to_tracks(pdf_page, ())
+    else:
+        strip_to_tracks(pdf_page, sheet.other_tracks)
     tracks_only = ImageEnhance.Contrast(
         render_page(pdf_page).crop(sheet.map.pixels())
     ).enhance(AERIAL_CONTRAST)
     paths.append(save(tracks_only, sheet.tracks_only_file_stem))
+    if sheet.freight_centerline is not None:
+        paths.append(tunnel_path)
     return paths
 
 
