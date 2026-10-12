@@ -32,7 +32,7 @@ The BAT ones also leave out the main line's `LRT-19` curves,
 so only the tracks curving to 2 Av are left.
 
 The street-running one also has a tunnel image,
-with the IBX tracks, the freight tracks in orange,
+with the IBX tracks, the freight tracks in black,
 and a possible tunnel alignment in pink.
 The PEL study doesn't have a tunnel, so it's only a guess:
 parallel to the freight tracks the whole way,

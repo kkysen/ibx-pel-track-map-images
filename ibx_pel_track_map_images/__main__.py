@@ -73,9 +73,9 @@ TUNNEL_COLOR = (255, 20, 147)
 # Between the two tunnel tracks' centerlines, the same as the IBX tracks' spacing.
 TUNNEL_TRACK_SPACING = 9.7
 TUNNEL_LINE_WIDTH = 3
-# The freight tracks are kept next to the tunnel, but in orange,
+# The freight tracks are kept next to the tunnel, but in black,
 # since their dark blue is hard to tell from the IBX tracks' blue.
-TUNNEL_FREIGHT_TRACK_COLOR = (255, 140, 0)
+TUNNEL_FREIGHT_TRACK_COLOR = (0, 0, 0)
 # The tunnel's station platforms, like the PEL study's Metropolitan Av ones:
 # to either side of the tracks' centerline, and as thick.
 TUNNEL_PLATFORM_OFFSET = 12.1
