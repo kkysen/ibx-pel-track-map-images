@@ -110,6 +110,10 @@ class Sheet:
     tunnel_offset: float = 0
     # Where the tunnel's station platforms start and end, left to right, in points.
     tunnel_station: tuple[float, float] | None = None
+    # Indices of the page objects of the IBX station's platforms,
+    # which are black images, drawn over in IBX blue in the tunnel image,
+    # so they don't look like the freight tracks.
+    platforms: tuple[int, ...] = ()
 
     @property
     def file_stem(self) -> str:
@@ -193,6 +197,7 @@ SHEETS = [
         # The Metropolitan Av platforms, moved to the tunnel,
         # since they're up away from the freight tracks to widen the street curve.
         tunnel_station=(24.8, 256.3),
+        platforms=(1598, 1600),
     ),
 ]
 
@@ -240,15 +245,19 @@ def strip_to_tracks(
     page: PdfPage,
     other_tracks: tuple[range, ...],
     colors: tuple[tuple[int, int, int], ...] = (IBX_TRACK_COLOR,),
+    keep: tuple[PdfObject, ...] = (),
 ) -> None:
     """Remove everything but the aerial photos and the track lines.
 
     The aerial photos are images, and everything drawn over them is vector paths and text,
     so the track lines are just the paths stroked in one of `colors`,
-    except for the `other_tracks`.
+    except for the `other_tracks`, and anything in `keep`.
     """
+    keep_raws = {ctypes.addressof(obj.raw.contents) for obj in keep}
     for i, obj in enumerate(list(page.get_objects())):
         if obj.type == pdfium_c.FPDF_PAGEOBJ_IMAGE:
+            continue
+        if ctypes.addressof(obj.raw.contents) in keep_raws:
             continue
         if (
             obj.type == pdfium_c.FPDF_PAGEOBJ_PATH
@@ -267,6 +276,16 @@ def recolor(
         if obj.type == pdfium_c.FPDF_PAGEOBJ_PATH and stroke_color(obj) == old:
             pdfium_c.FPDFPageObj_SetStrokeColor(obj, *new, 255)
     page.gen_content()
+
+
+def cover(page: PdfPage, obj: PdfObject, color: tuple[int, int, int]) -> PdfObject:
+    """Add a rectangle filled with `color` over `obj`, and return it."""
+    left, bottom, right, top = obj.get_bounds()
+    rect = pdfium_c.FPDFPageObj_CreateNewRect(left, bottom, right - left, top - bottom)
+    pdfium_c.FPDFPageObj_SetFillColor(rect, *color, 255)
+    pdfium_c.FPDFPath_SetDrawMode(rect, pdfium_c.FPDF_FILLMODE_WINDING, False)
+    pdfium_c.FPDFPage_InsertObject(page, rect)
+    return PdfObject(rect, page=page)
 
 
 def offset_line(
@@ -357,13 +376,23 @@ def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
     paths = [path]
     # These modify the page in `pdf`, so they go after rendering it as is.
     if sheet.freight_centerline is not None:
+        objects = list(pdf_page.get_objects())
+        platforms = [
+            cover(pdf_page, objects[i], IBX_TRACK_COLOR) for i in sheet.platforms
+        ]
         strip_to_tracks(
-            pdf_page, sheet.other_tracks, (IBX_TRACK_COLOR, FREIGHT_TRACK_COLOR)
+            pdf_page,
+            sheet.other_tracks,
+            (IBX_TRACK_COLOR, FREIGHT_TRACK_COLOR),
+            keep=platforms,
         )
         recolor(pdf_page, FREIGHT_TRACK_COLOR, TUNNEL_FREIGHT_TRACK_COLOR)
         tunnel = ImageEnhance.Contrast(
             render_page(pdf_page).crop(sheet.map.pixels())
         ).enhance(AERIAL_CONTRAST)
+        # The tracks-only image keeps the platforms as they are.
+        for platform in platforms:
+            pdf_page.remove_obj(platform)
         draw_tunnel(tunnel, sheet)
         tunnel_path = save(tunnel, sheet.tunnel_file_stem)
         # The `other_tracks` are gone, and the indices of what's left have changed.
