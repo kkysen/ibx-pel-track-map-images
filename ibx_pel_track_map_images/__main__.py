@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from curl_cffi import requests
+from PIL import ImageEnhance
 from PIL.Image import Image
 import pypdfium2.raw as pdfium_c
 from pypdfium2 import PdfDocument, PdfObject, PdfPage
@@ -37,6 +38,10 @@ RELEASE_TAG = "images"
 
 # The maps are vector linework over aerial photos of up to about 380 ppi.
 DPI = 200
+
+# The aerial photos in the PEL study are heavily washed out against white.
+# A modest contrast boost makes them easier to read in the generated maps.
+AERIAL_CONTRAST = 2.0
 
 
 @dataclass(frozen=True)
@@ -200,7 +205,9 @@ def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
     """Make the image with the curve table, and then the tracks-only one."""
     pdf_page = pdf[sheet.page - 1]
     page = render_page(pdf_page)
-    map_image = page.crop(sheet.map.pixels())
+    map_image = ImageEnhance.Contrast(page.crop(sheet.map.pixels())).enhance(
+        AERIAL_CONTRAST
+    )
     table = page.crop(sheet.table.pixels())
     if sheet.table_at is not None:
         x, y = (round(v * DPI / 72) for v in sheet.table_at)
@@ -211,7 +218,9 @@ def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
     path = save(map_image, sheet.file_stem)
     # This modifies the page in `pdf`, so it goes after rendering it as is.
     strip_to_tracks(pdf_page, sheet.other_tracks)
-    tracks_only = render_page(pdf_page).crop(sheet.map.pixels())
+    tracks_only = ImageEnhance.Contrast(
+        render_page(pdf_page).crop(sheet.map.pixels())
+    ).enhance(AERIAL_CONTRAST)
     tracks_only_path = save(tracks_only, sheet.tracks_only_file_stem)
     return [path, tracks_only_path]
 
