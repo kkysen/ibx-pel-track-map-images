@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from curl_cffi import requests
-from PIL import ImageEnhance
+from PIL import ImageDraw, ImageEnhance
 from PIL.Image import Image
 import pypdfium2.raw as pdfium_c
 from pypdfium2 import PdfDocument, PdfObject, PdfPage
@@ -64,8 +64,15 @@ class Box:
 
 
 # The stroke color of the IBX light rail track lines.
-# The freight tracks, in (0, 46, 184), are left out.
+# The freight tracks, in `FREIGHT_TRACK_COLOR`, are left out.
 IBX_TRACK_COLOR = (0, 127, 255)
+FREIGHT_TRACK_COLOR = (0, 46, 184)
+
+# A possible tunnel alignment, which the PEL study doesn't have, is drawn in pink.
+TUNNEL_COLOR = (255, 20, 147)
+# Between the two tunnel tracks' centerlines, the same as the IBX tracks' spacing.
+TUNNEL_TRACK_SPACING = 9.7
+TUNNEL_LINE_WIDTH = 3
 
 # Every track plan sheet has its aerial photo in the same frame.
 MAP_FRAME = Box(left=108, top=141, right=2340, bottom=750)
@@ -87,6 +94,10 @@ class Sheet:
     # for tracks other than the ones the image is of.
     # Each track line is drawn as a run of consecutive dash paths.
     other_tracks: tuple[range, ...] = ()
+    # A possible tunnel instead of the street running, as the cubic Bezier
+    # of the centerline between its two tracks, in points from the map's top left.
+    # It also gets an image of the tracks with the freight tracks and the tunnel.
+    tunnel: tuple[tuple[float, float], ...] | None = None
 
     @property
     def file_stem(self) -> str:
@@ -96,6 +107,10 @@ class Sheet:
     @property
     def tracks_only_file_stem(self) -> str:
         return f"{self.file_stem}-tracks-only"
+
+    @property
+    def tunnel_file_stem(self) -> str:
+        return f"{self.file_stem}-tunnel"
 
 
 SHEETS = [
@@ -131,6 +146,10 @@ SHEETS = [
         ),
         table=Box(left=1847, top=748, right=2134, bottom=1001),
         corner="left",
+        # Parallel to the freight tracks, without the tight street curves,
+        # from where the IBX tracks leave the Metropolitan Av platforms
+        # to the right edge of the map, where they're back by the freight tracks.
+        tunnel=((216, 110.7), (716, 108.2), (1215, 146.4), (1715, 158.4)),
     ),
 ]
 
@@ -174,11 +193,15 @@ def stroke_color(obj: PdfObject) -> tuple[int, int, int]:
     return (r.value, g.value, b.value)
 
 
-def strip_to_tracks(page: PdfPage, other_tracks: tuple[range, ...]) -> None:
-    """Remove everything but the aerial photos and the IBX track lines.
+def strip_to_tracks(
+    page: PdfPage,
+    other_tracks: tuple[range, ...],
+    colors: tuple[tuple[int, int, int], ...] = (IBX_TRACK_COLOR,),
+) -> None:
+    """Remove everything but the aerial photos and the track lines.
 
     The aerial photos are images, and everything drawn over them is vector paths and text,
-    so the IBX track lines are just the paths stroked in `IBX_TRACK_COLOR`,
+    so the track lines are just the paths stroked in one of `colors`,
     except for the `other_tracks`.
     """
     for i, obj in enumerate(list(page.get_objects())):
@@ -186,12 +209,46 @@ def strip_to_tracks(page: PdfPage, other_tracks: tuple[range, ...]) -> None:
             continue
         if (
             obj.type == pdfium_c.FPDF_PAGEOBJ_PATH
-            and stroke_color(obj) == IBX_TRACK_COLOR
+            and stroke_color(obj) in colors
             and not any(i in track for track in other_tracks)
         ):
             continue
         page.remove_obj(obj)
     page.gen_content()
+
+
+def draw_tunnel(image: Image, curve: tuple[tuple[float, float], ...]) -> None:
+    """Draw the tunnel's two tracks, offset to either side of its centerline."""
+    scale = DPI / 72
+    (x0, y0), (x1, y1), (x2, y2), (x3, y3) = curve
+    steps = 400
+    centerline = []
+    for i in range(steps + 1):
+        t = i / steps
+        u = 1 - t
+        point = (
+            u**3 * x0 + 3 * u**2 * t * x1 + 3 * u * t**2 * x2 + t**3 * x3,
+            u**3 * y0 + 3 * u**2 * t * y1 + 3 * u * t**2 * y2 + t**3 * y3,
+        )
+        # The tangent, to offset each track along the normal.
+        tangent = (
+            3 * u**2 * (x1 - x0) + 6 * u * t * (x2 - x1) + 3 * t**2 * (x3 - x2),
+            3 * u**2 * (y1 - y0) + 6 * u * t * (y2 - y1) + 3 * t**2 * (y3 - y2),
+        )
+        centerline.append((point, tangent))
+    draw = ImageDraw.Draw(image)
+    for side in (-1, 1):
+        track = []
+        for (x, y), (dx, dy) in centerline:
+            length = (dx**2 + dy**2) ** 0.5
+            offset = side * TUNNEL_TRACK_SPACING / 2 / length
+            track.append(((x - dy * offset) * scale, (y + dx * offset) * scale))
+        draw.line(
+            track,
+            fill=TUNNEL_COLOR,
+            width=round(TUNNEL_LINE_WIDTH * scale),
+            joint="curve",
+        )
 
 
 def save(image: Image, file_stem: str) -> Path:
@@ -202,7 +259,7 @@ def save(image: Image, file_stem: str) -> Path:
 
 
 def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
-    """Make the image with the curve table, and then the tracks-only one."""
+    """Make the image with the curve table, any tunnel one, and then the tracks-only one."""
     pdf_page = pdf[sheet.page - 1]
     page = render_page(pdf_page)
     map_image = ImageEnhance.Contrast(page.crop(sheet.map.pixels())).enhance(
@@ -216,13 +273,23 @@ def make_images(pdf: PdfDocument, sheet: Sheet) -> list[Path]:
         x = 0 if sheet.corner == "left" else map_image.width - table.width
     map_image.paste(table, (x, y))
     path = save(map_image, sheet.file_stem)
-    # This modifies the page in `pdf`, so it goes after rendering it as is.
+    paths = [path]
+    # These modify the page in `pdf`, so they go after rendering it as is.
+    if sheet.tunnel is not None:
+        strip_to_tracks(
+            pdf_page, sheet.other_tracks, (IBX_TRACK_COLOR, FREIGHT_TRACK_COLOR)
+        )
+        tunnel = ImageEnhance.Contrast(
+            render_page(pdf_page).crop(sheet.map.pixels())
+        ).enhance(AERIAL_CONTRAST)
+        draw_tunnel(tunnel, sheet.tunnel)
+        paths.append(save(tunnel, sheet.tunnel_file_stem))
     strip_to_tracks(pdf_page, sheet.other_tracks)
     tracks_only = ImageEnhance.Contrast(
         render_page(pdf_page).crop(sheet.map.pixels())
     ).enhance(AERIAL_CONTRAST)
-    tracks_only_path = save(tracks_only, sheet.tracks_only_file_stem)
-    return [path, tracks_only_path]
+    paths.append(save(tracks_only, sheet.tracks_only_file_stem))
+    return paths
 
 
 def upload(paths: list[Path]) -> None:
